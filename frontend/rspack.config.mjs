@@ -7,13 +7,13 @@ export default defineConfig({
     static: 'dist',
   },
   entry: {
-    main: './lib/index.js',
+    main: './src/index.js',
   },
   module: {
     defaultRules: [
       '...',
       {
-        test: /\.jsx$/,
+        test: /\.(js|jsx)$/,
         use: {
           loader: 'builtin:swc-loader',
           options: {
@@ -35,6 +35,23 @@ export default defineConfig({
           },
           type: 'javascript/auto',
         },
+      },
+      {
+        test: /\.css$/,
+        use: [
+          {
+            loader: 'postcss-loader',
+            options: {
+              postcssOptions: {
+                plugins: [
+                  require('@tailwindcss/postcss'),
+                  require('autoprefixer'),
+                ],
+              },
+            },
+          },
+          ],
+          type: 'css',
       },
     ],
   },

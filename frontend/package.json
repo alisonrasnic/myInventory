@@ -10,11 +10,11 @@
   "main": "src/app.js",
   "scripts": {
     "dev": "npm run build && rspack dev",
-    "build": "npx babel src --out-dir lib --presets=@babel/preset-react && rspack build && cp src/index.html dist/index.html && npx tailwindcss --input src/main.css --output dist/index.css",
+    "build": "rspack build && cp src/index.html dist/index.html",
     "preview": "rspack preview",
     "test": "node --test src/test.js"
   },
-  "author": "",
+  "author": "alisonrasnic@gmail.com",
   "license": "GPL-3.0-or-later",
   "devDependencies": {
     "@babel/core": "^7.29.7",
@@ -24,6 +24,10 @@
     "@rspack/core": "^2.0.4",
     "@rspack/dev-server": "^2.0.1",
     "@tailwindcss/cli": "^4.2.4",
-    "babel": "^5.8.38"
+    "@tailwindcss/postcss": "^4.3.0",
+    "autoprefixer": "^10.5.0",
+    "babel": "^5.8.38",
+    "postcss": "^8.5.15",
+    "postcss-loader": "^8.2.1"
   }
 }

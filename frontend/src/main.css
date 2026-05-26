@@ -1,11 +1,17 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
-#root {
-  background-color: #C3BFD4;
-  color: #111111;
+@theme {
+  --color-lavender1: #781F74;
+  --color-lavender2: #8F378B;
+  --color-lavender3: #A759A4;
+  --color-lavender4: #C888C5;
+  --color-lavender5: #E5BDE3;
 }
 
-div {
-  margin: 8px;
+html {
+  background-color: #C888C5;
 }
 
+button {
+  background-color: var(--color-lavender3); 
+}

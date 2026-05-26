@@ -1,0 +1,29 @@
+{
+  "dependencies": {
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "tailwindcss": "^4.2.4"
+  },
+  "name": "myinventory_frontend",
+  "version": "1.0.0",
+  "description": "Frontend for myInventory",
+  "main": "src/app.js",
+  "scripts": {
+    "dev": "npm run build && rspack dev",
+    "build": "npx babel src --out-dir lib --presets=@babel/preset-react && rspack build && cp src/index.html dist/index.html && npx tailwindcss --input src/main.css --output dist/index.css",
+    "preview": "rspack preview",
+    "test": "node --test src/test.js"
+  },
+  "author": "",
+  "license": "GPL-3.0-or-later",
+  "devDependencies": {
+    "@babel/core": "^7.29.7",
+    "@babel/node": "^7.29.7",
+    "@babel/preset-react": "^7.29.7",
+    "@rspack/cli": "^2.0.4",
+    "@rspack/core": "^2.0.4",
+    "@rspack/dev-server": "^2.0.1",
+    "@tailwindcss/cli": "^4.2.4",
+    "babel": "^5.8.38"
+  }
+}

@@ -1,0 +1,41 @@
+import { defineConfig } from '@rspack/cli';
+
+const isDev = process.env.NODE_ENV === 'development';
+
+export default defineConfig({
+  devServer: {
+    static: 'dist',
+  },
+  entry: {
+    main: './lib/index.js',
+  },
+  module: {
+    defaultRules: [
+      '...',
+      {
+        test: /\.jsx$/,
+        use: {
+          loader: 'builtin:swc-loader',
+          options: {
+            jsc: {
+              parser: {
+                syntax: 'ecmascript', // Use 'typescript' if using TS
+                jsx: true,
+              },
+              transform: {
+                react: {
+                  // 'automatic' tells SWC to auto-import the React runtime
+                  runtime: 'automatic', 
+                  // When true, this injects the development runtime 
+                  // (which adds source maps and better error tracking for React)
+                  development: isDev, 
+                },
+              },
+            },
+          },
+          type: 'javascript/auto',
+        },
+      },
+    ],
+  },
+});

@@ -12,6 +12,11 @@ html {
   background-color: #C888C5;
 }
 
+input {
+  color: #FFFFFF;
+  background-color: var(--color-lavender1);
+}
+
 button {
   background-color: var(--color-lavender3); 
 }

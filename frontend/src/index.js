@@ -1,14 +1,19 @@
 import {useState} from 'react';
 import {createRoot} from 'react-dom/client';
+import ItemList from './itemList';
+import Item from './item';
 import './main.css';
 
-export default function MyButton() {
-  const [num, setNum] = useState(0);
-
-  return ( <button class="flex shrink-0 p-4 gap-x-4 font-medium max-w-sm mx-auto rounded-xl text-xl outline outline-black/5" onClick={() => setNum(num+1)}>I'm a button! {num}</button> )
+export default function App() {
+  return ( 
+    <div class="bg-lavender3">
+      <ItemList /> 
+      <p class="text-center">GPLv3 &#xA9; Alison Rasnic, 2026</p>
+    </div>
+  );
 };
 
 const rootDom = document.getElementById('root');
 
 const root = createRoot(rootDom);
-root.render(<MyButton />);
+root.render(<App />);

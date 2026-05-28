@@ -6,7 +6,8 @@ export default function ItemList() {
   const [name, setName] = useState('Items');
   const [editItems, setEditItems] = useState(false);
   for (let i = 0; i < 5; i++) {
-    items[i] = <li class="m-2"><Item name={"Cabbage " + i}/></li>
+    var date = new Date("December 31, 2020 12:00:00");
+    items[i] = <li class="m-2"><Item name={"Cabbage " + i} useBy={date}/></li>
   }
 
   function editListName(e) {
@@ -26,9 +27,9 @@ export default function ItemList() {
   }
 
   return (
-    <ul class="bg-lavender4 mx-auto w-1/2 h-1/2 content-center items-center shrink-0 p-6">
+    <ul class="bg-lavender4 mx-auto rounded-xl w-1/2 h-1/2 content-center items-center shrink-0 p-6">
       <li class="bg-lavender4 shrink-0 items-center mx-auto text-center text-xl p-4">
-        { editItems ? <input value={name} onChange={(e)=>inputName(e)}></input> : name }
+        { editItems ? <input class="text-center" value={name} onChange={(e)=>inputName(e)}></input> : name }
         <button class="float-right" onClick={()=>editListName()}>.</button>
       </li>
       { items }

@@ -18,5 +18,8 @@ input {
 }
 
 button {
+  border-radius: 10px;
   background-color: var(--color-lavender3); 
+  border-color: black;
+  border-width: 2px;
 }

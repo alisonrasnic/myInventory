@@ -5,6 +5,10 @@ const isDev = process.env.NODE_ENV === 'development';
 export default defineConfig({
   devServer: {
     static: 'dist',
+    historyApiFallback: true,
+  },
+  output: {
+    publicPath: '/',
   },
   entry: {
     main: './src/index.js',

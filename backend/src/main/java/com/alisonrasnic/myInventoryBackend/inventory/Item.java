@@ -9,4 +9,6 @@ public class Item {
   Time bestBy;
   Time expires;
   String[] tags;
+
+  public String save() {return "poopy";}
 }

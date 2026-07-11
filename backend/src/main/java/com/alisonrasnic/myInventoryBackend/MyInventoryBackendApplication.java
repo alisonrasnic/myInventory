@@ -4,6 +4,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,6 +19,7 @@ import java.lang.ProcessBuilder.Redirect;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.sql.*;
+import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.Properties;
 
@@ -130,6 +132,90 @@ public class MyInventoryBackendApplication {
     var check_hash = makeHash(login.password, getUserSalt(login.username));
     var valid = MessageDigest.isEqual(user_hash.trim().getBytes(), check_hash.trim().getBytes());
     return ResponseEntity.ok(valid);
+  }
+
+  @PostMapping("/add_item")
+  public ResponseEntity addItem(@RequestBody ItemForm item) throws SQLException, IOException {
+    // TODO: Add user check
+    String sql = "INSERT INTO item (name, description, added, use_by, expires_by) VALUES (?, ?, NOW(), ?, ?);";
+    PreparedStatement pstmt = conn.prepareStatement(sql);
+    pstmt.setString(1, item.name());
+    pstmt.setString(2, item.description());
+    pstmt.setTimestamp(3, Timestamp.valueOf(item.useBy()));
+    pstmt.setTimestamp(4, Timestamp.valueOf(item.expiresBy()));
+    System.out.println(pstmt);
+    pstmt.executeUpdate();
+
+    Statement st = conn.createStatement();
+    String cmd = String.format("SELECT * FROM item WHERE name = \'%s\' and description = \'%s\' and use_by = (\'%s\') and expires_by = (\'%s\');", item.name(), item.description(), Timestamp.valueOf(item.useBy()).toString(), Timestamp.valueOf(item.expiresBy()).toString());
+    System.out.println(cmd);
+    ResultSet rs = st.executeQuery(cmd);
+
+    int i = -1;
+    if (rs.next()) {
+      i = rs.getInt(1);
+    }
+
+    if (i == -1) {
+      throw new SQLException("Could not find ID of inserted item");
+    }
+    sql = "INSERT INTO itemtorecord (item_id, record_id) VALUES (?, ?);";
+    pstmt = conn.prepareStatement(sql);
+    pstmt.setInt(1, i);
+    pstmt.setInt(2, item.recordID());
+    System.out.println(pstmt);
+    pstmt.executeUpdate();
+
+    return ResponseEntity.ok(HttpStatus.OK);
+  }
+
+  @PostMapping("/create_record")
+  public ResponseEntity createRecord(@RequestBody RecordForm rec) throws SQLException, IOException {
+    // TODO: Add user check
+    String sql = "INSERT INTO record (name, created) VALUES (?, NOW());";
+    PreparedStatement pstmt = conn.prepareStatement(sql);
+    pstmt.setString(1, rec.name());
+    pstmt.executeUpdate();
+
+    return ResponseEntity.ok(HttpStatus.OK);
+  }
+
+  @GetMapping("/get_items")
+  public ResponseEntity getItems(@RequestBody RecordForm rec) throws SQLException, IOException {
+    Statement st = conn.createStatement();
+    String cmd = String.format("SELECT id FROM record WHERE name = \'%s\';", rec.name());
+    ResultSet rs = st.executeQuery(cmd);
+    int id = -1;
+
+    if (rs.next()) {
+      id = rs.getInt(1);
+    }
+    if (id == -1) throw new SQLException("Could not find record with name %s", rec.name());
+
+    Item[] items = new Item[255];
+    st = conn.createStatement();
+    cmd = String.format("SELECT i.id, i.name, i.description, i.added, i.use_by, i.expires_by FROM item i JOIN itemtorecord ir ON i.id = ir.item_id WHERE ir.record_id = %d;", id);
+    System.out.println(cmd);
+    rs = st.executeQuery(cmd);
+
+    int i = 0;
+    while (rs.next()) {
+      Timestamp added = rs.getTimestamp(4);
+      Timestamp useBy = rs.getTimestamp(5);
+      Timestamp expiresBy = rs.getTimestamp(6);
+      Item item = new Item(
+        rs.getLong(1),
+        rs.getString(2),
+        rs.getString(3),
+        LocalDateTime.of(1900+added.getYear(), added.getMonth(), added.getDay(), added.getHours(), added.getMinutes(), added.getSeconds()),
+        LocalDateTime.of(1900+useBy.getYear(), useBy.getMonth(), useBy.getDay(), useBy.getHours(), useBy.getMinutes(), useBy.getSeconds()),
+        LocalDateTime.of(1900+expiresBy.getYear(), expiresBy.getMonth(), expiresBy.getDay(), expiresBy.getHours(), expiresBy.getMinutes(), expiresBy.getSeconds())
+      );
+      items[i] = item;
+      i += 1;
+    }
+
+    return ResponseEntity.ok(items);
   }
 }
 

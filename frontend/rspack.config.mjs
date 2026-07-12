@@ -6,6 +6,7 @@ export default defineConfig({
   devServer: {
     static: 'dist',
     historyApiFallback: true,
+    port: 9090,
   },
   output: {
     publicPath: '/',

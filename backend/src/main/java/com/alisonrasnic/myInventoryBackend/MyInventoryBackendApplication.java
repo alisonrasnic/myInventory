@@ -3,11 +3,15 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.support.HttpComponentsHeadersAdapter;
+import org.springframework.http.support.JettyHeadersAdapter;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpHeaders;
 
 import jakarta.annotation.Nullable;
 
@@ -20,7 +24,9 @@ import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.sql.*;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.HexFormat;
+import java.util.Map;
 import java.util.Properties;
 
 @SpringBootApplication
@@ -180,7 +186,7 @@ public class MyInventoryBackendApplication {
     return ResponseEntity.ok(HttpStatus.OK);
   }
 
-  @GetMapping("/get_items")
+  @PostMapping("/get_items")
   public ResponseEntity getItems(@RequestBody RecordForm rec) throws SQLException, IOException {
     Statement st = conn.createStatement();
     String cmd = String.format("SELECT id FROM record WHERE name = \'%s\';", rec.name());
@@ -207,15 +213,15 @@ public class MyInventoryBackendApplication {
         rs.getLong(1),
         rs.getString(2),
         rs.getString(3),
-        LocalDateTime.of(1900+added.getYear(), added.getMonth(), added.getDay(), added.getHours(), added.getMinutes(), added.getSeconds()),
-        LocalDateTime.of(1900+useBy.getYear(), useBy.getMonth(), useBy.getDay(), useBy.getHours(), useBy.getMinutes(), useBy.getSeconds()),
-        LocalDateTime.of(1900+expiresBy.getYear(), expiresBy.getMonth(), expiresBy.getDay(), expiresBy.getHours(), expiresBy.getMinutes(), expiresBy.getSeconds())
+        LocalDateTime.of(1900+added.getYear(), added.getMonth()+1, added.getDay()+1, added.getHours(), added.getMinutes(), added.getSeconds()),
+        LocalDateTime.of(1900+useBy.getYear(), useBy.getMonth()+1, useBy.getDay()+1, useBy.getHours(), useBy.getMinutes(), useBy.getSeconds()),
+        LocalDateTime.of(1900+expiresBy.getYear(), expiresBy.getMonth()+1, expiresBy.getDay()+1, expiresBy.getHours(), expiresBy.getMinutes(), expiresBy.getSeconds())
       );
       items[i] = item;
       i += 1;
     }
 
-    return ResponseEntity.ok(items);
+    return (ResponseEntity) ResponseEntity.ok().body(items);
   }
 }
 

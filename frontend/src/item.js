@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 export default function Item(props) {
+  const [id, setID] = useState(props.itemid ? props.itemid : -1);
   const [name, setName] = useState(props.name ? props.name : 'Unnamed Item');
   const [date, setDate] = useState(props.date ? props.date : new Date());
   const [useByDate, setUseByDate] = useState(props.useBy ? props.useBy : new Date());
@@ -48,7 +49,7 @@ export default function Item(props) {
      { moreInfo ? <div className="text-sm">Obtained: { addedDate.toLocaleString() } </div> : <></> }
       <div><button className="text-sm" onClick={() => showMore()}>...</button></div>
       <div> <button onClick={() => editClick()}>(Edit)</button></div>
-      { pastUseBy() ? <button className="float-right" onClick={() => props.remove(name)}>X</button> : <></>}
+      { pastUseBy() || moreInfo ? <button className="float-right" onClick={() => props.remove(id)}>X</button> : <></>}
     </div>
   );
 };

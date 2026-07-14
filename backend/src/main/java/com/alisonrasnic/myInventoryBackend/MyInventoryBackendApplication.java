@@ -3,9 +3,11 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.ResponseEntity.BodyBuilder;
 import org.springframework.http.support.HttpComponentsHeadersAdapter;
 import org.springframework.http.support.JettyHeadersAdapter;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -140,6 +142,24 @@ public class MyInventoryBackendApplication {
     return ResponseEntity.ok(valid);
   }
 
+  @DeleteMapping("/remove_item")
+  public ResponseEntity removeItem(@RequestBody Integer id) throws SQLException, IOException {
+    // TODO: Verify user 
+    String sql = "DELETE FROM ItemToRecord WHERE item_id = ?;";
+    PreparedStatement pstmt = conn.prepareStatement(sql);
+    pstmt.setInt(1, id);
+    System.out.println(pstmt);
+    pstmt.executeUpdate();
+
+    sql = "DELETE FROM Item WHERE id = ?;";
+    pstmt = conn.prepareStatement(sql);
+    pstmt.setInt(1, id);
+    System.out.println(pstmt);
+    pstmt.executeUpdate();
+
+    return ResponseEntity.ok(HttpStatus.OK);
+  }
+
   @PostMapping("/add_item")
   public ResponseEntity addItem(@RequestBody ItemForm item) throws SQLException, IOException {
     // TODO: Add user check
@@ -172,7 +192,7 @@ public class MyInventoryBackendApplication {
     System.out.println(pstmt);
     pstmt.executeUpdate();
 
-    return ResponseEntity.ok(HttpStatus.OK);
+    return ResponseEntity.ok().body(i);
   }
 
   @PostMapping("/create_record")
@@ -183,7 +203,10 @@ public class MyInventoryBackendApplication {
     pstmt.setString(1, rec.name());
     pstmt.executeUpdate();
 
-    return ResponseEntity.ok(HttpStatus.OK);
+    // TODO: Grab id from db
+    int id = 1;
+
+    return ResponseEntity.ok().body(id);
   }
 
   @PostMapping("/get_items")

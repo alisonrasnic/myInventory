@@ -100,6 +100,10 @@ public class MyInventoryBackendApplication {
   private static byte[] getUserSalt(String userName) throws SQLException {
     return getDb("person", String.format("WHERE name = \'%s\'", userName)).salt();
   }
+
+  private static long getUserID(String userName) throws SQLException {
+    return getDb("person", String.format("WHERE name = \'%s\'", userName)).id();
+  }
   
   @GetMapping("/getUser")
   public Person getUser(@RequestParam(value = "userName", defaultValue = "user") String userName) throws SQLException {
@@ -127,11 +131,17 @@ public class MyInventoryBackendApplication {
   }
 
   @GetMapping("/login")
-  public ResponseEntity<Boolean> loginUser(@RequestBody LoginForm login) throws SQLException, IOException {
+  public ResponseEntity<String> loginUser(@RequestBody LoginForm login) throws SQLException, IOException {
     var user_hash = getUserHash(login.username);
     var check_hash = makeHash(login.password, getUserSalt(login.username));
     var valid = MessageDigest.isEqual(user_hash.trim().getBytes(), check_hash.trim().getBytes());
-    return ResponseEntity.ok(valid);
+    long id = getUserID(login.username);
+    if (valid) {
+      JWTGenerator gen = new JWTGenerator();
+      return ResponseEntity.ok(gen.nextToken(id, login.username));
+    }
+
+    return ResponseEntity.ok("false");
   }
 
   @DeleteMapping("/remove_item")

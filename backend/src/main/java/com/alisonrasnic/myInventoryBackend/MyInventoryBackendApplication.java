@@ -13,22 +13,16 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.http.HttpHeaders;
-
-import jakarta.annotation.Nullable;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.lang.ProcessBuilder.Redirect;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.sql.*;
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.HexFormat;
-import java.util.Map;
 import java.util.Properties;
 
 @SpringBootApplication
@@ -114,12 +108,10 @@ public class MyInventoryBackendApplication {
   }
 
   @GetMapping("/createUser")
-  public ResponseEntity createUser(@RequestBody PersonForm personForm) throws SQLException, IOException {
+  public ResponseEntity<HttpStatus> createUser(@RequestBody PersonForm personForm) throws SQLException, IOException {
     byte[] salt = makeSalt();
     String b = makeHash(personForm.pw, salt);
 
-    String values = String.format("\'%s\', \'%s\', \'%s\', \'\\xx%s\'", personForm.name, personForm.email, b, HexFormat.of().formatHex(salt));
-  
     String sql = "INSERT INTO Person (name, email, pw, salt) VALUES (?, ?, ?, ?);";
     PreparedStatement pstmt = conn.prepareStatement(sql);
     pstmt.setString(1, personForm.name);
@@ -135,7 +127,7 @@ public class MyInventoryBackendApplication {
   }
 
   @GetMapping("/login")
-  public ResponseEntity loginUser(@RequestBody LoginForm login) throws SQLException, IOException {
+  public ResponseEntity<Boolean> loginUser(@RequestBody LoginForm login) throws SQLException, IOException {
     var user_hash = getUserHash(login.username);
     var check_hash = makeHash(login.password, getUserSalt(login.username));
     var valid = MessageDigest.isEqual(user_hash.trim().getBytes(), check_hash.trim().getBytes());
@@ -143,7 +135,7 @@ public class MyInventoryBackendApplication {
   }
 
   @DeleteMapping("/remove_item")
-  public ResponseEntity removeItem(@RequestBody Integer id) throws SQLException, IOException {
+  public ResponseEntity<HttpStatus> removeItem(@RequestBody Integer id) throws SQLException, IOException {
     // TODO: Verify user 
     String sql = "DELETE FROM ItemToRecord WHERE item_id = ?;";
     PreparedStatement pstmt = conn.prepareStatement(sql);
@@ -161,7 +153,7 @@ public class MyInventoryBackendApplication {
   }
 
   @PostMapping("/add_item")
-  public ResponseEntity addItem(@RequestBody ItemForm item) throws SQLException, IOException {
+  public ResponseEntity<Integer> addItem(@RequestBody ItemForm item) throws SQLException, IOException {
     // TODO: Add user check
     String sql = "INSERT INTO item (name, description, added, use_by, expires_by) VALUES (?, ?, NOW(), ?, ?);";
     PreparedStatement pstmt = conn.prepareStatement(sql);
@@ -196,7 +188,7 @@ public class MyInventoryBackendApplication {
   }
 
   @PostMapping("/create_record")
-  public ResponseEntity createRecord(@RequestBody RecordForm rec) throws SQLException, IOException {
+  public ResponseEntity<Integer> createRecord(@RequestBody RecordForm rec) throws SQLException, IOException {
     // TODO: Add user check
     String sql = "INSERT INTO record (name, created) VALUES (?, NOW());";
     PreparedStatement pstmt = conn.prepareStatement(sql);
@@ -210,7 +202,7 @@ public class MyInventoryBackendApplication {
   }
 
   @PostMapping("/get_items")
-  public ResponseEntity getItems(@RequestBody RecordForm rec) throws SQLException, IOException {
+  public ResponseEntity<Item[]> getItems(@RequestBody RecordForm rec) throws SQLException, IOException {
     Statement st = conn.createStatement();
     String cmd = String.format("SELECT id FROM record WHERE name = \'%s\';", rec.name());
     ResultSet rs = st.executeQuery(cmd);
@@ -244,7 +236,7 @@ public class MyInventoryBackendApplication {
       i += 1;
     }
 
-    return (ResponseEntity) ResponseEntity.ok().body(items);
+    return ResponseEntity.ok().body(items);
   }
 }
 

@@ -195,8 +195,13 @@ public class MyInventoryBackendApplication {
     pstmt.setString(1, rec.name());
     pstmt.executeUpdate();
 
-    // TODO: Grab id from db
+    sql = "SELECT * FROM record WHERE name = \'%s\' and created = NOW();";
+    pstmt = conn.prepareStatement(sql);
+    pstmt.setString(1, rec.name());
+    System.out.println(pstmt);
+    ResultSet rs = pstmt.executeQuery();
     int id = 1;
+    if (rs.next()) id = rs.getInt(1);
 
     return ResponseEntity.ok().body(id);
   }

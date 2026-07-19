@@ -35,10 +35,6 @@ export default function Item(props) {
     return Date.now() >= Date.parse(useByDate);
   }
 
-  function remove() {
-    setShouldRemove(true);
-  }
-
   const regularClasses = "rounded-xl content-center bg-lavender5 gap-x-4 text-center p-4 text-xl";
   const redClasses = "rounded-xl content-center animate-pulse bg-red-400 gap-x-4 text-center p-4 text-xl";
 

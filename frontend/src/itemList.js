@@ -49,15 +49,18 @@ export default function ItemList() {
   }
 
   function removeItem(id) {
-    if (id === -1) return;
-    var newItems = [...items];
     console.log(newItems);
     console.log(items);
+    if (id === -1) {
+      console.log("id was -1...");
+      return; 
+    }
+    var newItems = [...items];
     newItems.filter(item => {
       console.log(item);
-      console.log(item.props.children.props.id);
+      console.log(item.props.children.key);
       console.log(id);
-      return item.props.children.props.id !== id;
+      return item.props.children.key !== id;
     });
 
     let fetchPromise = fetch('http://localhost:8080/remove_item', {
@@ -69,10 +72,14 @@ export default function ItemList() {
       },
       body: id
     });
-    setItems(newItems);
+
+    fetchPromise.then( () => {
+      setItems(newItems);
+    });
   }
 
   useEffect( () => {
+    console.log("effect...");
     let fetchPromise = fetch('http://localhost:8080/get_items', {
       method: 'POST', 
       mode:   'cors',
@@ -86,19 +93,22 @@ export default function ItemList() {
     fetchPromise
     .then( (res) => res.json())
     .then( (data) => {
-      var items = [];
+      var newItems = [...items];
 
       for (let i = 0; i < 255; i++) {
         if (data[i] === null) continue;
         let itemd = data[i];
-        let item = <li className="m-2"><Item remove={(r) => removeItem(r)} key={itemd.id} itemid={itemd.id} name={itemd.name} added={itemd.added} useBy={itemd.useBy} expiresBy={itemd.expiresBy}/></li>;
+        let item = <li className="m-2"><Item remove={removeItem} key={itemd.id} itemid={itemd.id} name={itemd.name} added={itemd.added} useBy={itemd.useBy} expiresBy={itemd.expiresBy}/></li>;
 
-        items.push(item);
+        newItems.push(item);
       }
-      setItems(items);
+
+      console.log(newItems);
+      setItems(newItems);
+      console.log(items);
     })
     .catch( (err) => console.log(err.message));
-  }, [items]);
+  }, []);
 
   return (
     <ul className="bg-lavender4 mx-auto rounded-xl w-1/2 h-1/2 content-center items-center shrink-0 p-6">

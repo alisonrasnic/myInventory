@@ -1,4 +1,5 @@
 package com.alisonrasnic.myInventoryBackend;
+import org.apache.tomcat.util.json.JSONParser;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.http.HttpStatus;
@@ -22,6 +23,7 @@ import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.sql.*;
 import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.HexFormat;
 import java.util.Properties;
 
@@ -31,6 +33,16 @@ public class MyInventoryBackendApplication {
   static String url = "jdbc:postgresql://localhost/myInventoryDb";
   static Properties props;
   static Connection conn;
+
+  record CreatePersonReq(String username, String email, String pw){}
+  record LoginReq(String email, String pw){}
+  record UserAuth(String jwt, Integer userId){}
+
+  record DeleteItemReq(Integer id, UserAuth auth){}
+  record AddItemReq(String name, String description, LocalDateTime useBy, LocalDateTime expiresBy, Integer recordID, UserAuth auth){}
+  record DeleteRecordReq(Integer id, UserAuth auth){}
+  record GetRecordReq(Integer id, UserAuth auth){}
+  record AddRecordReq(String name, String description, UserAuth auth){}
 
   public static void main(String[] args) throws SQLException {
     props = new Properties();
@@ -93,69 +105,196 @@ public class MyInventoryBackendApplication {
     return s;
   }
 
-  private static String getUserHash(String userName) throws SQLException {
-    return getDb("person", String.format("WHERE name = \'%s\'", userName)).password();
+  private static String getUserHash(String email) throws SQLException {
+    return getDb("person", String.format("WHERE email = \'%s\'", email)).password();
   }
 
-  private static byte[] getUserSalt(String userName) throws SQLException {
-    return getDb("person", String.format("WHERE name = \'%s\'", userName)).salt();
+  private static byte[] getUserSalt(String email) throws SQLException {
+    return getDb("person", String.format("WHERE email = \'%s\'", email)).salt();
   }
 
-  private static long getUserID(String userName) throws SQLException {
-    return getDb("person", String.format("WHERE name = \'%s\'", userName)).id();
+  private static long getUserID(String email) throws SQLException {
+    return getDb("person", String.format("WHERE email = \'%s\'", email)).id();
   }
   
-  @GetMapping("/getUser")
-  public Person getUser(@RequestParam(value = "userName", defaultValue = "user") String userName) throws SQLException {
-    Person p = getDb("person", String.format("WHERE name = \'%s\'", userName));
+  @GetMapping("/get_user")
+  public Person getUser(@RequestParam(value = "email", defaultValue = "email@email.com") String email) throws SQLException {
+    Person p = getDb("person", String.format("WHERE email = \'%s\'", email));
     return p;
   }
 
-  @GetMapping("/createUser")
-  public ResponseEntity<HttpStatus> createUser(@RequestBody PersonForm personForm) throws SQLException, IOException {
+  @GetMapping("/create_user")
+  public ResponseEntity<String> createUser(@RequestBody CreatePersonReq req) throws SQLException, IOException {
     byte[] salt = makeSalt();
-    String b = makeHash(personForm.pw, salt);
+    String b = makeHash(req.pw, salt);
 
     String sql = "INSERT INTO Person (name, email, pw, salt) VALUES (?, ?, ?, ?);";
     PreparedStatement pstmt = conn.prepareStatement(sql);
-    pstmt.setString(1, personForm.name);
-    pstmt.setString(2, personForm.email);
+    pstmt.setString(1, req.username);
+    pstmt.setString(2, req.email);
     pstmt.setString(3, b);
     pstmt.setBytes(4, salt);
     pstmt.executeUpdate();
 
-    Person pe = getDb("person", String.format("WHERE name = \'%s\'", personForm.name));
+    Person pe = getDb("person", String.format("WHERE email = \'%s\'", req.email));
     String authValues = String.format("\'%d\', false, false", pe.id());
     insertDb("auth", "(userid, admin, moderator)", authValues);
-    return ResponseEntity.ok(HttpStatus.OK);
+    return loginUser(new LoginReq(req.email, req.pw));
   }
 
   @GetMapping("/login")
-  public ResponseEntity<String> loginUser(@RequestBody LoginForm login) throws SQLException, IOException {
-    var user_hash = getUserHash(login.username);
-    var check_hash = makeHash(login.password, getUserSalt(login.username));
+  public ResponseEntity<String> loginUser(@RequestBody LoginReq req) throws SQLException, IOException {
+    var user_hash = getUserHash(req.email);
+    var check_hash = makeHash(req.pw, getUserSalt(req.email));
     var valid = MessageDigest.isEqual(user_hash.trim().getBytes(), check_hash.trim().getBytes());
-    long id = getUserID(login.username);
+    long id = getUserID(req.email);
     if (valid) {
-      JWTGenerator gen = new JWTGenerator();
-      return ResponseEntity.ok(gen.nextToken(id, login.username));
+      JWTHandler gen = new JWTHandler();
+      return ResponseEntity.ok(gen.nextToken(id, req.email));
     }
 
     return ResponseEntity.ok("false");
   }
 
+  protected boolean verifyHeaderString(String headerString) {
+    Character c = '\u0000';
+    int i = -1;
+    while (i < headerString.length()) {
+      StringBuilder key = new StringBuilder();
+      StringBuilder value = new StringBuilder();
+      while (c != '\"') {
+        i++;
+        c = headerString.charAt(i);
+      }
+      i++;
+      c = headerString.charAt(i);
+      key.append(c);
+
+      while (c != '\"') {
+        i++;
+        c = headerString.charAt(i);
+        if (c != '\"')
+          key.append(c);
+      }
+      i++;
+      c = headerString.charAt(i);
+
+      while (c != '\"') {
+        i++;
+        c = headerString.charAt(i);
+      }
+      i++;
+      c = headerString.charAt(i);
+      value.append(c);
+
+      while (c != '\"') {
+        i++;
+        c = headerString.charAt(i);
+        if (c != '\"')
+          value.append(c);
+      }
+      i++;
+      c = headerString.charAt(i);
+
+      if (key.toString() == "typ") {
+        if (value.toString() != "JWT") return false;
+      } else if (key.toString() == "alg") {
+        if (value.toString() != "HS512") return false;
+      }
+
+      i++;
+      if (i >= headerString.length()) break;
+      c = headerString.charAt(i);
+    }
+
+    return true;
+  }
+
+  protected boolean verifyPayloadString(String payloadString, Integer id) {
+    Character c = '\u0000';
+    int i = -1;
+    while (i < payloadString.length()) {
+      StringBuilder key = new StringBuilder();
+      StringBuilder value = new StringBuilder();
+      while (c != '\"') {
+        i++;
+        c = payloadString.charAt(i);
+      }
+      i++;
+      c = payloadString.charAt(i);
+      key.append(c);
+
+      while (c != '\"') {
+        i++;
+        c = payloadString.charAt(i);
+        if (c != '\"')
+          key.append(c);
+      }
+      i++;
+      c = payloadString.charAt(i);
+
+      while (c != '\"') {
+        i++;
+        c = payloadString.charAt(i);
+      }
+      i++;
+      c = payloadString.charAt(i);
+      value.append(c);
+
+      while (c != '\"') {
+        i++;
+        c = payloadString.charAt(i);
+        if (c != '\"')
+          value.append(c);
+      }
+      i++;
+      c = payloadString.charAt(i);
+
+      if (key.toString().equals("sub")) {
+        if (value.toString().equals(id.toString())) return true;
+      }
+
+      i++;
+      if (i >= payloadString.length()) break;
+      c = payloadString.charAt(i);
+    }
+
+    return false;
+  }
+
+  protected boolean verifyUser(UserAuth auth) {
+    JWTHandler handler = new JWTHandler();
+    boolean validToken = handler.verifyToken(auth.jwt());
+    if (!validToken) return false;
+
+    byte[] header = Base64.getUrlDecoder().decode(handler.getHeader(auth.jwt()));
+    byte[] payload = Base64.getUrlDecoder().decode(handler.getPayload(auth.jwt()));
+    String headerString = new String(header);
+    String payloadString = new String(payload);
+
+    if (!verifyHeaderString(headerString)) { 
+      return false;
+    }
+    if (!verifyPayloadString(payloadString, auth.userId())) { 
+      return false;
+    }
+
+    return true;
+  }
+
   @DeleteMapping("/remove_item")
-  public ResponseEntity<HttpStatus> removeItem(@RequestBody Integer id) throws SQLException, IOException {
-    // TODO: Verify user 
+  public ResponseEntity<HttpStatus> removeItem(@RequestBody DeleteItemReq req) throws SQLException, IOException {
+    if (!verifyUser(req.auth)) return ResponseEntity.ok(HttpStatus.UNAUTHORIZED);
+
     String sql = "DELETE FROM ItemToRecord WHERE item_id = ?;";
     PreparedStatement pstmt = conn.prepareStatement(sql);
-    pstmt.setInt(1, id);
+    pstmt.setInt(1, req.id());
     System.out.println(pstmt);
     pstmt.executeUpdate();
 
     sql = "DELETE FROM Item WHERE id = ?;";
     pstmt = conn.prepareStatement(sql);
-    pstmt.setInt(1, id);
+    pstmt.setInt(1, req.id());
     System.out.println(pstmt);
     pstmt.executeUpdate();
 
@@ -163,22 +302,17 @@ public class MyInventoryBackendApplication {
   }
 
   @PostMapping("/add_item")
-  public ResponseEntity<Integer> addItem(@RequestBody ItemForm item) throws SQLException, IOException {
-    // TODO: Add user check
-    String sql = "INSERT INTO item (name, description, added, use_by, expires_by) VALUES (?, ?, NOW(), ?, ?);";
+  public ResponseEntity<Integer> addItem(@RequestBody AddItemReq req) throws SQLException, IOException {
+    if (!verifyUser(req.auth)) return ResponseEntity.ok(-1);
+
+    String sql = "INSERT INTO item (name, description, added, use_by, expires_by) VALUES (?, ?, NOW(), ?, ?) RETURNING id;";
     PreparedStatement pstmt = conn.prepareStatement(sql);
-    pstmt.setString(1, item.name());
-    pstmt.setString(2, item.description());
-    pstmt.setTimestamp(3, Timestamp.valueOf(item.useBy()));
-    pstmt.setTimestamp(4, Timestamp.valueOf(item.expiresBy()));
+    pstmt.setString(1, req.name());
+    pstmt.setString(2, req.description());
+    pstmt.setTimestamp(3, Timestamp.valueOf(req.useBy()));
+    pstmt.setTimestamp(4, Timestamp.valueOf(req.expiresBy()));
     System.out.println(pstmt);
-    pstmt.executeUpdate();
-
-    Statement st = conn.createStatement();
-    String cmd = String.format("SELECT * FROM item WHERE name = \'%s\' and description = \'%s\' and use_by = (\'%s\') and expires_by = (\'%s\');", item.name(), item.description(), Timestamp.valueOf(item.useBy()).toString(), Timestamp.valueOf(item.expiresBy()).toString());
-    System.out.println(cmd);
-    ResultSet rs = st.executeQuery(cmd);
-
+    ResultSet rs = pstmt.executeQuery();
     int i = -1;
     if (rs.next()) {
       i = rs.getInt(1);
@@ -187,52 +321,45 @@ public class MyInventoryBackendApplication {
     if (i == -1) {
       throw new SQLException("Could not find ID of inserted item");
     }
+
     sql = "INSERT INTO itemtorecord (item_id, record_id) VALUES (?, ?);";
     pstmt = conn.prepareStatement(sql);
     pstmt.setInt(1, i);
-    pstmt.setInt(2, item.recordID());
+    pstmt.setInt(2, req.recordID());
     System.out.println(pstmt);
     pstmt.executeUpdate();
 
     return ResponseEntity.ok().body(i);
   }
 
-  @PostMapping("/create_record")
-  public ResponseEntity<Integer> createRecord(@RequestBody RecordForm rec) throws SQLException, IOException {
-    // TODO: Add user check
-    String sql = "INSERT INTO record (name, created) VALUES (?, NOW());";
-    PreparedStatement pstmt = conn.prepareStatement(sql);
-    pstmt.setString(1, rec.name());
-    pstmt.executeUpdate();
+  @PostMapping("/add_record")
+  public ResponseEntity<Integer> addRecord(@RequestBody AddRecordReq req) throws SQLException, IOException {
+    if (!verifyUser(req.auth)) return ResponseEntity.ok(-1);
 
-    sql = "SELECT * FROM record WHERE name = \'%s\' and created = NOW();";
-    pstmt = conn.prepareStatement(sql);
-    pstmt.setString(1, rec.name());
-    System.out.println(pstmt);
+    String sql = "INSERT INTO record (name, created) VALUES (?, NOW()) RETURNING id;";
+    PreparedStatement pstmt = conn.prepareStatement(sql);
+    pstmt.setString(1, req.name());
     ResultSet rs = pstmt.executeQuery();
-    int id = 1;
-    if (rs.next()) id = rs.getInt(1);
+    int id = -1;
+    if (rs.next()) {
+      id = (int)rs.getLong("id");
+    }
 
     return ResponseEntity.ok().body(id);
   }
 
-  @PostMapping("/get_items")
-  public ResponseEntity<Item[]> getItems(@RequestBody RecordForm rec) throws SQLException, IOException {
-    Statement st = conn.createStatement();
-    String cmd = String.format("SELECT id FROM record WHERE name = \'%s\';", rec.name());
-    ResultSet rs = st.executeQuery(cmd);
-    int id = -1;
+  @GetMapping("/get_items")
+  public ResponseEntity<Item[]> getItems(@RequestBody GetRecordReq req) throws SQLException, IOException {
+    if (!verifyUser(req.auth)) return ResponseEntity.ok(new Item[]{});
 
-    if (rs.next()) {
-      id = rs.getInt(1);
-    }
-    if (id == -1) throw new SQLException("Could not find record with name %s", rec.name());
+    Statement st = conn.createStatement();
+    if (req.id() == -1) throw new SQLException("Could not find record with id " + req.id());
 
     Item[] items = new Item[255];
     st = conn.createStatement();
-    cmd = String.format("SELECT i.id, i.name, i.description, i.added, i.use_by, i.expires_by FROM item i JOIN itemtorecord ir ON i.id = ir.item_id WHERE ir.record_id = %d;", id);
+    String cmd = String.format("SELECT i.id, i.name, i.description, i.added, i.use_by, i.expires_by FROM item i JOIN itemtorecord ir ON i.id = ir.item_id WHERE ir.record_id = %d;", req.id());
     System.out.println(cmd);
-    rs = st.executeQuery(cmd);
+    ResultSet rs = st.executeQuery(cmd);
 
     int i = 0;
     while (rs.next()) {

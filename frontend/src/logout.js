@@ -5,6 +5,7 @@ function Logout(props) {
   useEffect( () => {
     deleteJWT();
     deleteUserId();
+    props.logoutCallback();
   }, []);
   return (
     <div className="m-2 p-2" id="logout">

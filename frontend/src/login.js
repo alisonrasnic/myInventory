@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { getJWTPayload } from './jwt';
 
 function Login(props) {
@@ -33,7 +33,7 @@ function Login(props) {
         props.saveJWT(value);
         getUserId(value).then( (id) => {
           props.saveUserId(id);
-          navigate('/');
+          navigate('/', true);
         });
       });
     });

@@ -1,13 +1,13 @@
-import {Navigate, Outlet} from 'react-router-dom';
+import {Navigate, Outlet} from 'react-router';
 
 function LoggedInRoute(props) {
-  if (!props.isLoggedIn()) {
+  if (!props.isLoggedIn) {
     return (
       <Outlet/>
     )
   }
 
-  return (<Navigate to="/login" replace />)
+  return (<Navigate to="/" replace />)
 }
 
 export { LoggedInRoute };

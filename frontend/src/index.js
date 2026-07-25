@@ -12,6 +12,7 @@ import { Logout } from './logout';
 import { LoggedInRoute } from './loggedInRoute';
 import { RecordView } from './recordView';
 import Taskbar from './taskbar';
+import RouterWrapper from './routerWrapper';
 import './main.css';
 
 export default function App() {
@@ -46,7 +47,7 @@ export default function App() {
 
   function mapRecords(r) {
     return r.map(i => (
-          <div name={i.id} key={i.id} className="m-2 p-2">{i.name} | {i.description} {i.created ? "Created at: {i.created}" : ""} <button name="goToRecord" id={i.id} onClick={goToRecord}>&gt;</button><button className="m-2 text-xl" onClick={(e) => { removeRecord(e, i.id); }} disabled={deleteMutation.isPending} >{ deleteMutation.isPending ? 'Deleting...' : 'Delete' }</button></div>
+          <li name={i.id} key={i.id} className="m-2 p-2">{i.name} | {i.description} {i.created ? "Created at: {i.created}" : ""} <button name="goToRecord" id={i.id} onClick={goToRecord}>&gt;</button><button className="m-2 text-xl" onClick={(e) => { removeRecord(e, i.id); }} disabled={deleteMutation.isPending} >{ deleteMutation.isPending ? 'Deleting...' : 'Delete' }</button></li>
     ))
   }
 
@@ -135,32 +136,29 @@ export default function App() {
     addMutation.mutate({name, description});
   }
 
-  if (isLoading) return <div className="bg-lavender3"><p>Loading records...</p></div>;
-  if (isError) return <div className="bg-lavender3"><p>Could not load records: {error.message}. Please refresh or try again later.</p></div>;
+  if (!hasJWT()) return <div className="bg-lavender3 flex items-center justify-center text-xl"><p>Please login to see records.</p></div>
+  if (isLoading) return <div className="bg-lavender3 flex items-center justify-center text-xl"><p>Loading records...</p></div>;
+  if (isError) return <div className="bg-lavender3 flex items-center justify-center text-xl"><p>Could not load records: {error.message}. Please refresh or try again later.</p></div>;
 
   return ( 
-    <div className="bg-lavender3">
-      { mapRecords(records) }
+    <div className="bg-lavender3 items-center justify-center text-xl">
+      <ul className="flex items-center justify-center">
+        { mapRecords(records) }
+      </ul>
       { addingButton ? 
-          <div id="addButtonDiv">
-            <input className="m-2 p-2" id="recordNameInput" placeholder="Record name"/>
-            <input className="m-2 p-2" id="recordDescriptionInput" placeholder="Record description"/>
-            <button className="text-xl" id="postRecordButton" onClick={postRecord}>+</button>
-          </div> : 
-          <div className="m-2 p-2 text-xl" id="add_record" ><button onClick={addRecordButton}>+</button></div> }
+        <li id="addButtonDiv" className="items-center flex justify-center">
+          <input className="m-2 p-2" id="recordNameInput" placeholder="Record name"/>
+          <input className="m-2 p-2" id="recordDescriptionInput" placeholder="Record description"/>
+          <button className="text-xl m-2 p-2" id="postRecordButton" onClick={postRecord}>+</button>
+          <button className="text-xl m-2 p-2" id="cancelAddButton" onClick={() => { setAddingButton(false); } }>Cancel</button>
+        </li> : 
+        <li className="items-center flex justify-center"><div className="m-2 p-2 text-xl" id="add_record" ><button onClick={addRecordButton}>+</button></div></li>
+      }
     </div>
   );
 };
 
 const rootDom = document.getElementById('root');
-
-function saveJWT(jwt) {
-  document.cookie = "auth="+jwt+";path=/";
-}
-
-function saveUserId(id) {
-  document.cookie = "userId="+id+";path=/";
-}
 
 const queryClient = new QueryClient();
 
@@ -168,21 +166,7 @@ const root = createRoot(rootDom);
 root.render(
   <QueryClientProvider client={queryClient}>
     <BrowserRouter>
-      <Taskbar />
-      <Routes>
-        <Route path="/" element={<App />} />
-        <Route path="/record" element={<RecordView />} />
-        <Route element={<LoggedInRoute isLoggedIn={hasJWT} />}>
-          <Route path="/login" element={<Login saveUserId={(id) => saveUserId(id)} saveJWT={(jwt) => saveJWT(jwt)}/>}/>
-        </Route>
-        <Route element={<LoggedInRoute isLoggedIn={() => { return !hasJWT;} } />}>
-          <Route path="/logout" element={<Logout/>}/>
-        </Route>
-
-        <Route path="*" element={<h1>404 - Page Not Found</h1>} />
-
-      </Routes>
-      <p className="fixed bottom-1 text-center">GPLv3 &#xA9; Alison Rasnic, 2026</p>
+      <RouterWrapper/>
     </BrowserRouter>
   </QueryClientProvider>
 );

@@ -1,7 +1,8 @@
-import {useEffect,useState} from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router';
-import { useNavigate } from 'react-router-dom';
-import {createRoot} from 'react-dom/client';
+import { useEffect, useState } from 'react';
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router';
+import { createRoot } from 'react-dom/client';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
 import { getJWT, hasJWT, getUserId } from './jwt';
 import ItemList from './itemList';
 import Item from './item';
@@ -21,6 +22,36 @@ export default function App() {
   function goToRecord(e) {
     var senderId = e.target.id;
     navigate("/record?id=" + senderId);
+  }
+
+  function removeRecord(e, id) {
+    if (!confirm("Delete this record? (Will delete ALL exclusive items)")) {
+      return;
+    }
+
+    var jwt = getJWT();
+    var userId = getUserId();
+    e.preventDefault();
+
+    if (jwt === "" || userId == -1) return;
+
+    let fetchPromise = fetch('http://localhost:8080/delete_record', {
+      method: 'DELETE', 
+      mode:   'cors',
+      headers: {
+        "Content-Type": "application/json",
+        "X-PINGOTHER": "pingpong",
+      },
+      body: "{\"id\": \""+id+"\", \"auth\": { \"jwt\": \""+jwt+"\", \"userId\": \""+ userId +"\" }}"
+    });
+
+    fetchPromise
+    .then( (res) => {
+      if (!res.ok) throw res;
+
+      var localRecords = records;
+      setRecords();
+    });
   }
 
   useEffect(() => {
@@ -45,7 +76,7 @@ export default function App() {
         var localRecords = [];
         for (var i in value) {
           var r = value[i];
-          localRecords.push(<div name={r.id} key={r.id} className="m-2 p-2">{r.name} | {r.description} {r.created ? "Created at: {r.created}" : ""} <button name="goToRecord" id={r.id} onClick={goToRecord}>&gt;</button></div>); 
+          localRecords.push(<div name={r.id} key={r.id} className="m-2 p-2">{r.name} | {r.description} {r.created ? "Created at: {r.created}" : ""} <button name="goToRecord" id={r.id} onClick={goToRecord}>&gt;</button><button className="m-2 text-xl" onClick={(e) => { removeRecord(e, r.id); }}>:</button></div>); 
         }
         setRecords(localRecords);
       });
@@ -114,23 +145,27 @@ function saveUserId(id) {
   document.cookie = "userId="+id+";path=/";
 }
 
+const queryClient = new QueryClient();
+
 const root = createRoot(rootDom);
 root.render(
-  <BrowserRouter>
-    <Taskbar />
-    <Routes>
-      <Route path="/" element={<App />} />
-      <Route path="/record" element={<RecordView />} />
-      <Route element={<LoggedInRoute isLoggedIn={hasJWT} />}>
-        <Route path="/login" element={<Login saveUserId={(id) => saveUserId(id)} saveJWT={(jwt) => saveJWT(jwt)}/>}/>
-      </Route>
-      <Route element={<LoggedInRoute isLoggedIn={() => { return !hasJWT;} } />}>
-        <Route path="/logout" element={<Logout/>}/>
-      </Route>
+  <QueryClientProvider client={queryClient}>
+    <BrowserRouter>
+      <Taskbar />
+      <Routes>
+        <Route path="/" element={<App />} />
+        <Route path="/record" element={<RecordView />} />
+        <Route element={<LoggedInRoute isLoggedIn={hasJWT} />}>
+          <Route path="/login" element={<Login saveUserId={(id) => saveUserId(id)} saveJWT={(jwt) => saveJWT(jwt)}/>}/>
+        </Route>
+        <Route element={<LoggedInRoute isLoggedIn={() => { return !hasJWT;} } />}>
+          <Route path="/logout" element={<Logout/>}/>
+        </Route>
 
-      <Route path="*" element={<h1>404 - Page Not Found</h1>} />
+        <Route path="*" element={<h1>404 - Page Not Found</h1>} />
 
-    </Routes>
-    <p className="fixed bottom-1 text-center">GPLv3 &#xA9; Alison Rasnic, 2026</p>
-  </BrowserRouter>
+      </Routes>
+      <p className="fixed bottom-1 text-center">GPLv3 &#xA9; Alison Rasnic, 2026</p>
+    </BrowserRouter>
+  </QueryClientProvider>
 );

@@ -359,6 +359,59 @@ public class MyInventoryBackendApplication {
     return ResponseEntity.ok().body(id);
   }
 
+  @DeleteMapping("/delete_record")
+  public ResponseEntity<HttpStatus> deleteRecord(@RequestBody DeleteRecordReq req) throws SQLException, IOException {
+    if (!verifyUser(req.auth)) return ResponseEntity.ok(HttpStatus.UNAUTHORIZED);
+    // TODO: Verify that the user has permission/ownership over this record
+
+    // TODO: In order to remove a record we need to do several things in order:
+    //   1. Delete all itemtorecord entries for that record
+    //   2. Delete all exclusive items
+    //   3. Delete all persontorecord entries for that record
+    //   4. Delete the record itself
+
+    String sql = "DELETE from itemtorecord WHERE record_id = ?";
+    PreparedStatement st = conn.prepareStatement(sql);
+    System.out.println(st);
+    st.setLong(1, req.id);
+    try {
+      st.executeQuery();
+    } catch (SQLException e) {
+      System.out.println("[INFO]: " + e);
+    }
+
+    sql = "DELETE from item WHERE id NOT IN (SELECT item_id from itemtorecord);";
+    st = conn.prepareStatement(sql);
+    System.out.println(st);
+    try {
+      st.executeQuery();
+    } catch (SQLException e) {
+      System.out.println("[INFO]: " + e);
+    }
+
+    sql = "DELETE from persontorecord WHERE record_id = ?;";
+    st = conn.prepareStatement(sql);
+    System.out.println(st);
+    st.setLong(1, req.id);
+    try {
+      st.executeQuery();
+    } catch (SQLException e) {
+      System.out.println("[INFO]: " + e);
+    }
+
+    sql = "DELETE from record where id = ?;";
+    st = conn.prepareStatement(sql);
+    System.out.println(st);
+    st.setLong(1, req.id);
+    try {
+      st.executeQuery();
+    } catch (SQLException e) {
+      System.out.println("[INFO]: " + e);
+    }
+
+    return ResponseEntity.ok(HttpStatus.OK);
+  }
+
   @PostMapping("/get_records")
   public ResponseEntity<ArrayList<Record>> getRecords(@RequestBody GetRecordsReq req) throws SQLException, IOException {
     if (!verifyUser(req.auth)) return ResponseEntity.ok(new @Nullable ArrayList<Record>());

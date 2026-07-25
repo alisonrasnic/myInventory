@@ -1,4 +1,5 @@
 import { defineConfig } from '@rspack/cli';
+import path from 'path';
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -16,7 +17,9 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      buffer: require.resolve('buffer/')
+      buffer: require.resolve('buffer/'),
+      react: path.resolve(__dirname, './node_modules/react'),
+      'react-dom': path.resolve(process.cwd(), './node_modules/react-dom')
     }
   },
   module: {

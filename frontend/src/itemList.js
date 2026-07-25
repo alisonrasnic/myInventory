@@ -1,10 +1,16 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router';
 import Item from './item';
 import AddItem from './addItem';
+import { getJWT, getUserId } from './jwt';
 
-export default function ItemList() {
+export default function ItemList(props) {
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const recordId = searchParams.get("id");
+
   const [items, setItems] = useState([]);
-  const [name, setName] = useState('fridge1');
+  const [name, setName] = useState(props.name ? props.name : 'fridge1');
   const [editItems, setEditItems] = useState(false);
   const [addItem, setAddItem] = useState(false);
 
@@ -25,6 +31,8 @@ export default function ItemList() {
   }
 
   function newItem(name, description, added, useBy, expiresBy) {
+    let jwt = getJWT();
+    let userId = getUserId();
     let fetchPromise = fetch('http://localhost:8080/add_item', {
       method: 'POST', 
       mode:   'cors',
@@ -32,7 +40,7 @@ export default function ItemList() {
         "Content-Type": "application/json",
         "X-PINGOTHER": "pingpong",
       },
-      body: "{\"name\": \""+name+"\",\"description\": \""+description+"\",\"added\": \""+added.toJSON()+"\",\"useBy\": \""+useBy+"\",\"expiresBy\": \""+expiresBy+"\", \"recordID\": \""+"1\" }"
+      body: "{\"name\": \""+name+"\",\"description\": \""+description+"\",\"useBy\": \""+useBy+"\",\"expiresBy\": \""+expiresBy+"\", \"recordID\": "+ recordId +", \"auth\": { \"jwt\": \"" + jwt + "\", \"userId\": \"" + userId + "\" } }"
     });
     var itemID = -1;
     fetchPromise
@@ -79,7 +87,10 @@ export default function ItemList() {
   }
 
   useEffect( () => {
-    console.log("effect...");
+    var id = recordId;
+    let jwt = getJWT();
+    let userId = getUserId();
+
     let fetchPromise = fetch('http://localhost:8080/get_items', {
       method: 'POST', 
       mode:   'cors',
@@ -87,7 +98,7 @@ export default function ItemList() {
         "Content-Type": "application/json",
         "X-PINGOTHER": "pingpong",
       },
-      body: "{ \"name\": \""+name+"\" }"
+      body: "{ \"id\": \""+id+"\", \"auth\": { \"jwt\": \""+ jwt +"\", \"userId\": \""+ userId +"\"}}"
     });
 
     fetchPromise
@@ -113,7 +124,7 @@ export default function ItemList() {
   return (
     <ul className="bg-lavender4 mx-auto rounded-xl w-1/2 h-1/2 content-center items-center shrink-0 p-6">
       <li className="bg-lavender4 shrink-0 items-center mx-auto text-center text-xl p-4">
-        { editItems ? <input className="text-center" value={name} onChange={(e)=>inputName(e)}></input> : name }
+        { editItems ? <input className="text-center" value={name} onChange={(e)=>inputName(e)}></input> : props.name }
         <button className="float-right" onClick={()=>editListName()}>.</button>
       </li>
       { items }

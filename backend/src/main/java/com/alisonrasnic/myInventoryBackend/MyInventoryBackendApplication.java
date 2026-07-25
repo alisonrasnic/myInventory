@@ -1,5 +1,6 @@
 package com.alisonrasnic.myInventoryBackend;
 import org.apache.tomcat.util.json.JSONParser;
+import org.jspecify.annotations.Nullable;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.http.HttpStatus;
@@ -23,6 +24,7 @@ import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.sql.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.Properties;
@@ -43,6 +45,7 @@ public class MyInventoryBackendApplication {
   record DeleteRecordReq(Integer id, UserAuth auth){}
   record GetRecordReq(Integer id, UserAuth auth){}
   record AddRecordReq(String name, String description, UserAuth auth){}
+  record GetRecordsReq(UserAuth auth){}
 
   public static void main(String[] args) throws SQLException {
     props = new Properties();
@@ -142,7 +145,7 @@ public class MyInventoryBackendApplication {
     return loginUser(new LoginReq(req.email, req.pw));
   }
 
-  @GetMapping("/login")
+  @PostMapping("/login")
   public ResponseEntity<String> loginUser(@RequestBody LoginReq req) throws SQLException, IOException {
     var user_hash = getUserHash(req.email);
     var check_hash = makeHash(req.pw, getUserSalt(req.email));
@@ -336,19 +339,51 @@ public class MyInventoryBackendApplication {
   public ResponseEntity<Integer> addRecord(@RequestBody AddRecordReq req) throws SQLException, IOException {
     if (!verifyUser(req.auth)) return ResponseEntity.ok(-1);
 
-    String sql = "INSERT INTO record (name, created) VALUES (?, NOW()) RETURNING id;";
+    String sql = "INSERT INTO record (name, description, created) VALUES (?, ?, NOW()) RETURNING id;";
     PreparedStatement pstmt = conn.prepareStatement(sql);
-    pstmt.setString(1, req.name());
+    pstmt.setString(1, req.name);
+    pstmt.setString(2, req.description);
     ResultSet rs = pstmt.executeQuery();
     int id = -1;
     if (rs.next()) {
       id = (int)rs.getLong("id");
     }
 
+    sql = "INSERT INTO persontorecord(person_id, record_id) VALUES (?, ?);";
+    pstmt = conn.prepareStatement(sql);
+    pstmt.setInt(1, req.auth.userId);
+    pstmt.setInt(2, id);
+    System.out.println(pstmt);
+    pstmt.executeUpdate();
+
     return ResponseEntity.ok().body(id);
   }
 
-  @GetMapping("/get_items")
+  @PostMapping("/get_records")
+  public ResponseEntity<ArrayList<Record>> getRecords(@RequestBody GetRecordsReq req) throws SQLException, IOException {
+    if (!verifyUser(req.auth)) return ResponseEntity.ok(new @Nullable ArrayList<Record>());
+
+    Statement st = conn.createStatement();
+
+    ArrayList<Record> records = new ArrayList<Record>();
+    st = conn.createStatement();
+    String cmd = String.format("SELECT r.id, r.name, r.description FROM record r JOIN persontorecord pr ON r.id = pr.record_id WHERE pr.person_id = %d;", req.auth.userId);
+    System.out.println(cmd);
+    ResultSet rs = st.executeQuery(cmd);
+
+    while (rs.next()) {
+      Record r = new Record(
+        (int)rs.getLong(1),
+        rs.getString(2),
+        rs.getString(3)
+      );
+      records.add(r);
+    }
+
+    return ResponseEntity.ok().body(records);
+  }
+
+  @PostMapping("/get_items")
   public ResponseEntity<Item[]> getItems(@RequestBody GetRecordReq req) throws SQLException, IOException {
     if (!verifyUser(req.auth)) return ResponseEntity.ok(new Item[]{});
 

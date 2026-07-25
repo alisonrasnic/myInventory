@@ -14,6 +14,11 @@ export default defineConfig({
   entry: {
     main: './src/index.js',
   },
+  resolve: {
+    alias: {
+      buffer: require.resolve('buffer/')
+    }
+  },
   module: {
     defaultRules: [
       '...',

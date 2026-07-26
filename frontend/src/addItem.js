@@ -7,6 +7,11 @@ const AddItem = (props) => {
     var name = document.getElementById('nameInput').value;
     var description = document.getElementById('descriptionInput').value;
     var useBy = document.getElementById('useByDateInput').value;
+    if (useBy === "") {
+      useBy = new Date();
+      useBy = (new Date()).toISOString();
+    }
+
     var expiresBy = moreOptions ? document.getElementById('expiresByDateInput').value : useBy;
 
     var now = new Date();

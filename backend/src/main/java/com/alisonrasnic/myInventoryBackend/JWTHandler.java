@@ -4,7 +4,6 @@ import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
 import java.util.Base64;
 
 import javax.crypto.Mac;
@@ -73,6 +72,8 @@ public class JWTHandler {
   }
 
   public boolean verifyToken(String token) {
+    if (token.equals("")) return false;
+
     String secret = System.getenv("myInventorySecret");
     StringBuilder tokenBuilder = new StringBuilder(token);
     String headerB64 = parseUntilSectionEnd(tokenBuilder);

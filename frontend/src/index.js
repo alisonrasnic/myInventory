@@ -40,7 +40,7 @@ export default function App() {
         body: "{\"auth\": { \"jwt\": \""+jwt+"\", \"userId\": \""+ userId +"\" }}"
       });
 
-      if (!res.ok) throw "Huh";
+      if (!res.ok) return [];
       return res.json();
     }
   });
@@ -100,7 +100,6 @@ export default function App() {
     mutationFn: async ({name, description}) => {
       const jwt = getJWT();
       const userId = getUserId();
-      console.log(name + " | " + description);
       const res = await fetch('http://localhost:8080/add_record', {
         method: 'POST', 
         mode:   'cors',
@@ -129,7 +128,6 @@ export default function App() {
     var name = document.getElementById("recordNameInput").value;
     var description = document.getElementById("recordDescriptionInput").value;
 
-    console.log(name + " | " + description);
     name = name ? name : "...";
     description = description ? description : "...";
 

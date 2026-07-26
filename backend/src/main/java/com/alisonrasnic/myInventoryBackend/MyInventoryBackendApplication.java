@@ -285,7 +285,7 @@ public class MyInventoryBackendApplication {
     return true;
   }
 
-  @DeleteMapping("/remove_item")
+  @DeleteMapping("/delete_item")
   public ResponseEntity<HttpStatus> removeItem(@RequestBody DeleteItemReq req) throws SQLException, IOException {
     if (!verifyUser(req.auth)) return ResponseEntity.ok(HttpStatus.UNAUTHORIZED);
 
